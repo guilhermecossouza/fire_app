@@ -161,6 +161,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-
-./fire-app/node_modules
-./fire-app/src/firebaseConnection.js
+#React
+node_modules
+firebaseConnection.js
