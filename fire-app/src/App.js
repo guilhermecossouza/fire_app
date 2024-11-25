@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { db } from './firebaseConnection';
+import { db, auth } from './firebaseConnection';
 //import { doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged }  from 'firebase/auth';
 import { 
   doc, 
   collection, 
@@ -20,6 +21,10 @@ export default function App() {
   const [autor, setAutor] = useState("");
   const [posts, setPosts] = useState([]);
   const [idPost, setIdPost] = useState("");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [user, setUser] = useState(false);
+  const [userDetail, setUserDetail] = useState([]);
 
   useEffect(() => {
     async function loadPosts() {
@@ -34,10 +39,27 @@ export default function App() {
       //   });
       //   setPosts(listaPost);
       // });
-    }
-
+    }  
     loadPosts();
   });
+
+  useEffect(() => {
+    async function checkLogin() {
+      onAuthStateChanged(auth, (user) => {
+        if(user) {
+          setUserDetail({
+            uid: user.uid,
+            email: user.email,
+          });
+          setUser(true);
+        } else {
+          setUserDetail([]);
+          setUser(false);
+        }
+      });
+    }
+    checkLogin();
+  }, []);
 
   async function handleAdd() {
     // await setDoc(doc(db, "posts", "12345"), {
@@ -111,10 +133,85 @@ export default function App() {
     })
   }
 
+  async function novoUsuario(email, senha) {
+    await createUserWithEmailAndPassword(auth, email, senha).then((response) => {
+      console.log("Usuário criado com sucesso!");
+      console.log(response);
+      setSenha("");
+      setEmail("");
+    }).catch((error) => {
+      if(error.code === 'auth/weak-password') {
+        alert('A senha precisa ter no mínimo 6 caracteres');
+      }
+    })
+  }
+
+  async function logarUsuario(email, senha) {
+    await signInWithEmailAndPassword(auth, email, senha).then((response) => {
+      setSenha("");
+      setEmail("");
+      setUserDetail({
+        uid: response.user.uid,
+        email: response.user.email,
+      })
+      setUser(true);
+    }).catch((error) => {
+      console.log(`Gerou um erro: ${error}`);
+    })
+  }
+
+  async function deslogar() {
+    await signOut(auth).then(() => {
+      setUser(false);
+      setUserDetail([]);
+    }).catch((error) => {
+      console.log(`Gerou um erro: ${error}`);
+    })  
+  }
+
   return (
     <div className="App">
       <h1>Projeto React com FireBase</h1>
+      {user && (
+        <div>
+          <p>Usuário logado: {userDetail.email}</p>
+          <p>Id do usuário: {userDetail.uid}</p>
+          <p>Você está logado</p>
+          <button
+            type='button'
+            onClick={ deslogar }
+          >Deslogar</button>
+        </div>
+      )}
       <div className="container">
+        <label>Email: </label>
+        <input 
+          type="email"
+          value={ email }
+          onChange={ (event) => {  setEmail(event.target.value)}}
+          placeholder='infrome o e-mail'
+        />
+        <label>Senha: </label>
+        <input 
+          type="password"
+          value={ senha }
+          onChange={ (event) => {  setSenha(event.target.value)}}
+          placeholder='infrome a senha'
+        />
+        <br/>
+        <button
+          type='button'
+          onClick={ () => { novoUsuario(email, senha) } }
+        >Cadastrar usuário</button>
+
+        <br/>
+        <button
+          type='button'
+          onClick={ () => { logarUsuario(email, senha) } }
+        >logar</button>
+
+      </div>
+      <br/><br/><br/>
         <label>Id do post</label>
         <input
           type="text"
@@ -171,6 +268,5 @@ export default function App() {
           })}
         </ul>
       </div>
-    </div>
   );
 }
